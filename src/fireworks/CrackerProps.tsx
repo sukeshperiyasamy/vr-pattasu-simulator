@@ -5,34 +5,36 @@ import { Object3D as Transform, Quaternion, Vector3 } from 'three';
 import type { Group, InstancedMesh, Object3D } from 'three';
 import { table } from '../scene/layout';
 import type { Firework } from './lifecycle';
-import { fusePoints, walaCoil } from './registry';
+import { fusePoints, groundPopPosition, groundPopTimes } from './registry';
 import type { CrackerId } from './registry';
 
 export const heldOffset = [0.32, -0.31, -0.74] as const;
 export const controllerOffset = [0.08, -0.055, -0.3] as const;
 
-function CrackerChain({ coiled, highlighted, spent }: { coiled: boolean; highlighted: boolean; spent: boolean }) {
+function CrackerChain({ id, highlighted, spent }: { id: 'wala' | 'chain' | 'bijili'; highlighted: boolean; spent: boolean }) {
   const mesh = useRef<InstancedMesh>(null);
-  const count = coiled ? 84 : 8;
+  const coiled = id === 'wala';
+  const small = id === 'bijili';
+  const count = groundPopTimes[id]?.length ?? 0;
   useLayoutEffect(() => {
     if (!mesh.current) return;
     const transform = new Transform();
     for (let i = 0; i < count; i++) {
       const progress = i / (count - 1);
-      const [x, z] = coiled ? walaCoil(progress) : [(i - 3.5) * 0.035, (i % 2 - 0.5) * 0.032];
-      transform.position.set(x, coiled ? 0.017 : 0.024, z);
+      const [x, z] = groundPopPosition(id, i);
+      transform.position.set(x, coiled || small ? 0.017 : 0.024, z);
       transform.rotation.set(0, coiled ? -progress * Math.PI * 6 : 0, Math.PI / 2);
       transform.updateMatrix();
       mesh.current.setMatrixAt(i, transform.matrix);
     }
     mesh.current.instanceMatrix.needsUpdate = true;
     mesh.current.computeBoundingSphere();
-  }, [coiled, count]);
-  const radius = coiled ? 0.013 : 0.02;
+  }, [coiled, count, id, small]);
+  const radius = coiled || small ? 0.013 : 0.02;
   return <>
     <instancedMesh ref={mesh} args={[undefined, undefined, count]}>
-      <cylinderGeometry args={[radius, radius, 0.062, 8]} />
-      <meshStandardMaterial color={spent ? '#3d3029' : '#9b2923'} roughness={0.86}
+      <cylinderGeometry args={[radius, radius, coiled || small ? 0.038 : 0.062, 8]} />
+      <meshStandardMaterial color={spent ? '#3d3029' : small ? '#b44a24' : '#9b2923'} roughness={0.86}
         emissive="#d17839" emissiveIntensity={highlighted ? 0.32 : 0} />
     </instancedMesh>
     {coiled ? <mesh position-y={0.016} rotation-x={-Math.PI / 2}>
@@ -46,7 +48,18 @@ function CrackerChain({ coiled, highlighted, spent }: { coiled: boolean; highlig
 }
 
 export function PropShape({ id, highlighted, spent }: { id: CrackerId; highlighted: boolean; spent: boolean }) {
-  if (id === 'wala' || id === 'chain') return <CrackerChain coiled={id === 'wala'} {...{ highlighted, spent }} />;
+  if (id === 'wala' || id === 'chain' || id === 'bijili') return <CrackerChain {...{ id, highlighted, spent }} />;
+  if (id === 'atom') return <>
+    <mesh position-y={0.04}>
+      <boxGeometry args={[0.093, 0.08, 0.09]} />
+      <meshStandardMaterial color={spent ? '#3d3029' : '#5e6537'} roughness={0.88}
+        emissive="#c78c46" emissiveIntensity={highlighted ? 0.32 : 0} />
+    </mesh>
+    <mesh position-y={0.043}>
+      <boxGeometry args={[0.096, 0.022, 0.093]} />
+      <meshStandardMaterial color="#b08549" roughness={0.94} />
+    </mesh>
+  </>;
   if (id === 'rocket') {
     return <>
       <mesh position-y={0.16}><cylinderGeometry args={[0.009, 0.01, 0.32, 8]} /><meshStandardMaterial color="#9b7548" /></mesh>

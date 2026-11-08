@@ -17,11 +17,12 @@ const depth = 0.235;
 const height = 0.064;
 const hingeAngle = -1.97;
 const artOrder = [...crackerIds, 'sign'] as const;
+const atlasRows = Math.ceil(artOrder.length / 4);
 
 function paintAtlas() {
   const canvas = document.createElement('canvas');
   canvas.width = 1024;
-  canvas.height = 512;
+  canvas.height = atlasRows * 256;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Could not create shop packaging textures');
   artOrder.forEach((id, index) => {
@@ -67,7 +68,7 @@ function labelGeometry(index: number, lid: boolean) {
     const artwork = !lid || (i >= top && i < top + 4);
     const u = artwork ? uv.getX(i) * 0.97 + 0.015 : 0.025;
     const v = artwork ? uv.getY(i) * 0.97 + 0.015 : 0.025;
-    uv.setXY(i, (index % 4 + u) / 4, (1 - Math.floor(index / 4) + v) / 2);
+    uv.setXY(i, (index % 4 + u) / 4, (atlasRows - 1 - Math.floor(index / 4) + v) / atlasRows);
   }
   uv.needsUpdate = true;
   return geometry;
@@ -139,7 +140,7 @@ export const FirecrackerShop = memo(function FirecrackerShop({ aimed }: { aimed:
     return {
       texture, labels: new MeshStandardMaterial({ map: texture, roughness: 0.82, metalness: 0 }),
       tray: trayGeometry(), lids: crackerIds.map((_, index) => labelGeometry(index, true)),
-      sign: labelGeometry(7, false),
+      sign: labelGeometry(crackerIds.length, false),
     };
   }, []);
   useLayoutEffect(() => {
@@ -166,7 +167,7 @@ export const FirecrackerShop = memo(function FirecrackerShop({ aimed }: { aimed:
   return (
     <group position={[table.x, table.height + 0.004, table.z]} name="Pattasu shop">
       <mesh position={[0, 0.291, -0.16]} receiveShadow>
-        <boxGeometry args={[1.03, 0.036, 0.25]} />
+        <boxGeometry args={[1.49, 0.036, 0.25]} />
         <meshStandardMaterial color="#513526" roughness={0.88} />
       </mesh>
       {[-0.37, 0.37].map(x => <mesh key={x} position={[x, 0.32, -0.294]} receiveShadow>

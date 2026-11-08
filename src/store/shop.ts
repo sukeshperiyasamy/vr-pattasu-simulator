@@ -9,9 +9,11 @@ export const packages = {
   sparkler: { color: '#82562a', stock: 8, position: [-0.16, 0, 0.11], mark: 'HANDHELD' },
   spinner: { color: '#325b54', stock: 5, position: [0.16, 0, 0.11], mark: 'GROUND SPINNER' },
   skyshot: { color: '#394f76', stock: 4, position: [0.47, 0, 0.11], mark: 'AERIAL BURST' },
-  chain: { color: '#763d53', stock: 4, position: [-0.34, 0.31, -0.16], mark: 'RED CHAIN' },
-  rocket: { color: '#395965', stock: 4, position: [0, 0.31, -0.16], mark: 'GOLD COMET' },
-  wala: { color: '#8d3928', stock: 3, position: [0.34, 0.31, -0.16], mark: 'LONG CHAIN' },
+  chain: { color: '#763d53', stock: 4, position: [-0.58, 0.31, -0.16], mark: 'RED CHAIN' },
+  rocket: { color: '#395965', stock: 4, position: [-0.29, 0.31, -0.16], mark: 'GOLD COMET' },
+  wala: { color: '#8d3928', stock: 3, position: [0, 0.31, -0.16], mark: 'LONG CHAIN' },
+  bijili: { color: '#69502a', stock: 6, position: [0.29, 0.31, -0.16], mark: 'QUICK POPS' },
+  atom: { color: '#495638', stock: 5, position: [0.58, 0.31, -0.16], mark: 'HEAVY GROUND BURST' },
 } as const satisfies Record<CrackerId, {
   color: string; stock: number; position: readonly [number, number, number]; mark: string;
 }>;

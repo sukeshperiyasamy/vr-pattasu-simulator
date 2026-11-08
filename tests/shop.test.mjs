@@ -15,9 +15,9 @@ function finish(store, id) {
   store.getState().act({ type: 'finish' });
 }
 
-test('all seven boxes start closed with configured stock', () => {
+test('all nine boxes start closed with configured stock', () => {
   const store = createShopStore();
-  assert.equal(Object.keys(store.getState().boxes).length, 7);
+  assert.equal(Object.keys(store.getState().boxes).length, 9);
   for (const id of crackerIds) {
     assert.equal(store.getState().boxes[id].phase, 'closed');
     assert.equal(store.getState().boxes[id].stock, packages[id].stock);
@@ -39,7 +39,7 @@ test('opening and closing settle once and ignore input while in flight', () => {
   assert.equal(store.getState().boxes[id].phase, 'closed');
 });
 
-test('withdrawal enters the existing lifecycle once for each of the seven crackers', () => {
+test('withdrawal enters the existing lifecycle once for each cracker', () => {
   const store = createShopStore();
   for (const id of crackerIds) {
     const { toggle, take } = store.getState();

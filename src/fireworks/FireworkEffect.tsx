@@ -9,8 +9,9 @@ import { createFountainAudio } from '../audio/fountain';
 import { qualityOptions, useSettings } from '../store/settings';
 import type { Ground } from './lifecycle';
 import { controllerOffset, heldOffset } from './CrackerProps';
-import { crackers, walaBursts, walaCoil, walaInterval } from './registry';
+import { crackers, groundPopPosition, groundPopTimes } from './registry';
 import type { CrackerId } from './registry';
+import type { PaperPool } from './PaperDebris';
 
 const ignition = 0.72;
 const burstAt = 2;
@@ -43,10 +44,11 @@ function smokeTexture() {
 
 const worldOrigin: Ground = [0, 0, 0];
 
-export function FireworkEffect({ id, ground, onFinish, touchActive, xrActive, pointer, light }: {
+export function FireworkEffect({ id, ground, onFinish, touchActive, xrActive, pointer, light, paper }: {
   id: CrackerId; ground: Ground | null; onFinish: () => void; touchActive: boolean;
   xrActive: boolean; pointer: RefObject<Object3D | null>;
   light: RefObject<PointLight | null>;
+  paper: RefObject<PaperPool | null>;
 }) {
   const { camera, gl } = useThree();
   const sparks = useRef<InstancedMesh>(null);
@@ -64,6 +66,7 @@ export function FireworkEffect({ id, ground, onFinish, touchActive, xrActive, po
   const smoke = useMemo(() => Array.from({ length: smokeCount }, makeParticle), []);
   const positions = useMemo(() => new Float32Array(smokeCount * 3), []);
   const texture = useMemo(smokeTexture, []);
+  const popTimes = groundPopTimes[id];
   const tools = useMemo(() => ({
     transform: new Object3D(), direction: new Vector3(), hot: new Color(3.6, 1.9, 0.55),
     cool: new Color(0.9, 0.16, 0.025), color: new Color(), origin: new Vector3(),
@@ -75,12 +78,12 @@ export function FireworkEffect({ id, ground, onFinish, touchActive, xrActive, po
     const player = createFountainAudio(id);
     const lamp = light.current;
     if (lamp) {
-      lamp.color.set(id === 'skyshot' ? '#ffcbad' : id === 'chain' || id === 'wala' ? '#ff874b' : '#ffb364');
+      lamp.color.set(id === 'skyshot' ? '#ffcbad' : popTimes ? '#ff874b' : '#ffb364');
       lamp.distance = id === 'skyshot' || id === 'rocket' ? 21 : id === 'sparkler' ? 2.8 : 6;
     }
     audio.current = player;
     return () => { player.dispose(); if (lamp) lamp.intensity = 0; audio.current = null; };
-  }, [id, light]);
+  }, [id, light, popTimes]);
 
   useEffect(() => () => texture.dispose(), [texture]);
 
@@ -91,9 +94,8 @@ export function FireworkEffect({ id, ground, onFinish, touchActive, xrActive, po
     const { origin } = tools;
     const aerial = id === 'skyshot' || id === 'rocket';
     const longChain = id === 'wala';
-    const chain = id === 'chain' || longChain;
-    const burstCount = longChain ? walaBursts : 8;
-    const interval = longChain ? walaInterval : 0.4;
+    const heavy = id === 'atom';
+    const chain = !!popTimes;
     origin.set(0, id === 'spinner' ? 0.058 : chain ? 0.045 : aerial ? 0.25 : 0.2, 0);
     if (!ground) {
       const pose = (xrActive ? pointer.current : camera) ?? camera;
@@ -126,15 +128,20 @@ export function FireworkEffect({ id, ground, onFinish, touchActive, xrActive, po
     const envelope = igniting ? t * 0.16 : Math.min(1, (t - ignition) * 3) * fade;
     const density = Math.min(qualityOptions[quality].density, xrActive ? 0.66 : 1);
     const height = shellRise(t);
-    const popIndex = !igniting && chain ? Math.min(burstCount - 1, Math.floor((t - ignition) / interval)) : -1;
-    const newPop = popIndex > chainPop.current;
+    const nextPop = popTimes?.[chainPop.current + 1];
+    const newPop = nextPop !== undefined && t >= ignition + nextPop;
+    const popIndex = chainPop.current + Number(newPop);
     if (newPop) chainPop.current = popIndex;
+    const accent = !longChain || popIndex % 6 === 0 || popIndex % 6 === 4;
     if (popIndex >= 0) {
-      if (longChain) {
-        const [x, z] = walaCoil(popIndex / (burstCount - 1));
-        origin.x = x;
-        origin.z = z;
-      } else origin.x = (popIndex - 3.5) * 0.035;
+      const [x, z] = groundPopPosition(id, popIndex);
+      origin.x = x;
+      origin.z = z;
+      if (newPop && ground) {
+        audio.current?.pop(ground[0] + x, ground[1] + origin.y, ground[2] + z, accent);
+        paper.current?.scatter(ground[0] + x, ground[1], ground[2] + z,
+          heavy ? 24 : longChain ? (accent ? 4 : 2) : 5, heavy ? 1.65 : 1);
+      }
     }
     const burstGlow = Math.max(0, 1 - Math.abs(t - burstAt) * (reducedFlash ? 1.5 : 3));
     if (shell.current) {
@@ -149,14 +156,18 @@ export function FireworkEffect({ id, ground, onFinish, touchActive, xrActive, po
       light.current.position.x += Math.cos(t * 15) * 0.23;
       light.current.position.z += Math.sin(t * 15) * 0.23;
     }
-    const popGlow = popIndex >= 0
-      ? Math.max(0, 1 - (t - ignition - popIndex * interval) * (longChain && !reducedFlash ? 10 : 8)) : 0;
-    const longGlow = Math.max(0, Math.min(1, (t - ignition) * 2, (ignition + burstCount * interval - t) * 2));
+    const lastPop = popTimes?.[popIndex];
+    const popGlow = lastPop === undefined ? 0 : Math.max(0, 1 - (t - ignition - lastPop) * (longChain ? 13 : 8));
+    const glowEnd = ignition + (popTimes?.at(-1) ?? 0) + 0.6;
+    const longGlow = Math.max(0, Math.min(1, (t - ignition) * 3, (glowEnd - t) * 3));
     light.current.intensity = aerial ? (reducedFlash ? 22 : 72) * burstGlow ** 2
-      : (reducedFlash ? 8 : 21) * (chain ? (reducedFlash ? longGlow : popGlow ** 2) * 0.35 : envelope * pulse);
+      : chain ? (reducedFlash ? 2.5 * longGlow : (heavy ? 25 : accent ? 15 : 9) * popGlow ** 2)
+        : (reducedFlash ? 8 : 21) * envelope * pulse;
     const rate = igniting ? 18 : aerial ? (lift ? 195 : 0) : chain ? 0 : (handheld ? 160 : 280) * envelope * pulse;
-    budget.current += rate * density * delta + Math.round((burstNow ? 340 : newPop ? (longChain ? 17 : 31) : 0) * density);
-    smokeBudget.current += (igniting || aerial || handheld ? 0 : chain ? 6 * popGlow : 10 * envelope) * density * delta;
+    const popSparks = heavy ? 75 : longChain && !accent ? 21 : 35;
+    budget.current += rate * density * delta + Math.round((burstNow ? 340 : newPop ? popSparks : 0) * density);
+    smokeBudget.current += (igniting || aerial || handheld ? 0 : chain ? 6 * popGlow : 10 * envelope) * density * delta
+      + (newPop ? (heavy ? 7 : accent ? 2 : 0.7) * density : 0);
 
     for (const particle of pool) {
       if (budget.current < 1) break;
@@ -171,8 +182,11 @@ export function FireworkEffect({ id, ground, onFinish, touchActive, xrActive, po
       particle.glow = 0.62 + Math.random() * 0.65;
       particle.palette = -1;
       if (chain && !igniting) {
-        particle.velocity.set(Math.cos(angle) * (0.7 + spread), 0.55 + Math.random() * 1.1, Math.sin(angle) * (0.7 + spread));
-        particle.life = 0.22 + Math.random() * 0.36;
+        particle.velocity.set(Math.cos(angle) * (0.8 + spread), 0.75 + Math.random() * 1.6, Math.sin(angle) * (0.8 + spread));
+        if (heavy) particle.velocity.multiplyScalar(1.55);
+        particle.life = 0.2 + Math.random() * 0.42;
+        particle.size *= reducedFlash ? 0.9 : accent ? 1.55 : 1.2;
+        particle.glow *= reducedFlash ? 0.7 : 1.15;
       } else if (spinning && !igniting) {
         particle.position.x += Math.cos(angle) * 0.064;
         particle.position.z += Math.sin(angle) * 0.064;

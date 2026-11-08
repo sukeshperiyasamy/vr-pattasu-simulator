@@ -1,12 +1,25 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { initialFirework, transition } from '../src/fireworks/lifecycle.ts';
+import { crackers, fusePoints, groundPopPosition, groundPopTimes } from '../src/fireworks/registry.ts';
 
 const ground = [0, 0, 1];
 const place = { type: 'place', ground };
 const ignite = { type: 'ignite' };
 const reset = { type: 'reset' };
 const pick = { type: 'pick', id: 'busvanam' };
+
+test('Wala has irregular, frame-safe pop spacing and time for its final burst', () => {
+  const times = groundPopTimes.wala;
+  assert.equal(times.length, 120);
+  assert.equal(times[0], 0);
+  const gaps = times.slice(1).map((time, index) => time - times[index]);
+  assert(gaps.every(gap => gap > 0.05));
+  assert(Math.max(...gaps) - Math.min(...gaps) > 0.08);
+  assert(crackers.wala.duration - times.at(-1) > 2);
+  const [x, z] = groundPopPosition('wala', 0);
+  assert.deepEqual([x, z], [fusePoints.wala[0], fusePoints.wala[2]]);
+});
 
 test('Busvanam must be picked up and placed before one activation', () => {
   assert.equal(transition(initialFirework, place), initialFirework);

@@ -5,7 +5,9 @@ export const crackers = {
   skyshot: { label: 'Sky Shot', type: 'Aerial firework', placement: 'ground', x: 3.16, duration: 6.7 },
   chain: { label: 'Red Cracker Chain', type: 'Sequential ground bursts', placement: 'ground', x: 2.41, z: -0.17, duration: 5.4 },
   rocket: { label: 'Comet Rocket', type: 'Gold aerial comet', placement: 'ground', x: 2.95, z: -0.17, duration: 6.7 },
-  wala: { label: '1000 Wala', type: 'Rapid ground cracker chain', placement: 'ground', x: 2.68, z: -0.18, duration: 15.4 },
+  wala: { label: '1000 Wala', type: 'Rapid ground cracker chain', placement: 'ground', x: 2.68, z: -0.18, duration: 16 },
+  bijili: { label: 'Bijili Crackers', type: 'Quick string of sharp pops', placement: 'ground', x: 3.23, duration: 3.1 },
+  atom: { label: 'Atom Bomb', type: 'Single heavy ground burst', placement: 'ground', x: 3.4, duration: 3.3 },
 } as const;
 
 export type CrackerId = keyof typeof crackers;
@@ -19,10 +21,24 @@ export const fusePoints = {
   chain: [-0.15, 0.035, 0],
   rocket: [0.029, 0.16, 0.03],
   wala: [0.108, 0.035, 0],
+  bijili: [-0.1, 0.025, 0],
+  atom: [0, 0.087, 0],
 } as const satisfies Record<CrackerId, readonly [number, number, number]>;
 
-export const walaBursts = 88;
-export const walaInterval = 0.15;
+export const groundPopTimes: Partial<Record<CrackerId, readonly number[]>> = {
+  chain: Array.from({ length: 8 }, (_, i) => i * 0.4),
+  wala: Array.from({ length: 120 }, (_, i) => Math.floor(i / 6) * 0.69
+    + [0, 0.13, 0.25, 0.323, 0.402, 0.565][i % 6]),
+  bijili: [0, 0.11, 0.23, 0.31, 0.4, 0.57],
+  atom: [0],
+};
+
+export function groundPopPosition(id: CrackerId, index: number) {
+  if (id === 'wala') return walaCoil(index / ((groundPopTimes.wala?.length ?? 1) - 1));
+  if (id === 'atom') return [0, 0] as const;
+  return id === 'bijili' ? [(index - 2.5) * 0.04, 0] as const
+    : [(index - 3.5) * 0.035, (index % 2 - 0.5) * 0.032] as const;
+}
 
 export function walaCoil(progress: number) {
   const angle = progress * Math.PI * 6;

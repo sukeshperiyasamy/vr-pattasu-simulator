@@ -30,3 +30,5 @@ See webxr-input-profiles-MIT.txt for the license notice.
 Phase 7 nighttime ambience and refreshed firecracker cues use original synthesized project audio.
 
 Phase 8 stall geometry, unbranded packaging artwork, and shop sound cues are original project assets.
+
+The ground-pop sound, Bijili and Atom Bomb packaging, and procedural paper debris are original project assets.

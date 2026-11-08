@@ -1,7 +1,7 @@
 import { Howl, Howler } from 'howler';
 import type { Camera } from 'three';
 import { Quaternion, Vector3 } from 'three';
-import { crackerIds, pistols } from '../fireworks/registry';
+import { crackerIds, groundPopTimes, pistols } from '../fireworks/registry';
 import type { CrackerId, PistolId } from '../fireworks/registry';
 import { useSettings } from '../store/settings';
 
@@ -11,11 +11,12 @@ const listener = new Vector3();
 const orientation = new Quaternion();
 const shopCues = ['shop-open', 'shop-close', 'shop-pick', 'shop-empty', 'shop-select'] as const;
 type ShopCue = typeof shopCues[number];
-type Cue = CrackerId | PistolId | ShopCue;
+type Cue = CrackerId | PistolId | ShopCue | 'ground-pop';
 const bank = new Map<Cue, Howl>();
 
 export function prepareAudio() {
-  crackerIds.forEach(getSound);
+  crackerIds.filter(id => !groundPopTimes[id]).forEach(getSound);
+  getSound('ground-pop');
   (Object.keys(pistols) as PistolId[]).forEach(getSound);
   shopCues.forEach(getSound);
   const context = Howler.ctx;
@@ -26,7 +27,7 @@ function getSound(cracker: Cue) {
   const existing = bank.get(cracker);
   if (existing) return existing;
   const clip = cracker === 'rocket' ? 'skyshot' : cracker;
-  const extension = cracker === 'cap' || cracker === 'roll' || cracker.startsWith('shop-') ? '.wav' : '.ogg';
+  const extension = cracker === 'cap' || cracker === 'roll' || cracker === 'ground-pop' || cracker.startsWith('shop-') ? '.wav' : '.ogg';
   const sound = new Howl({
     src: [import.meta.env.BASE_URL + 'assets/audio/' + clip + extension],
     volume: 0.56,
@@ -56,8 +57,9 @@ export function playShopCue(cue: ShopCue, point: Vector3, camera: Camera) {
   sound.pos(point.x, point.y, point.z, instance);
 }
 
-export function createFountainAudio(cracker: Cue) {
-  const sound = getSound(cracker);
+export function createFountainAudio(cracker: CrackerId | PistolId) {
+  const perPop = cracker !== 'cap' && cracker !== 'roll' && !!groundPopTimes[cracker];
+  const sound = getSound(perPop ? 'ground-pop' : cracker);
   const isCap = cracker === 'cap' || cracker === 'roll';
   const isAerial = cracker === 'skyshot' || cracker === 'rocket';
   const baseGain = isCap ? 0.41 : isAerial ? 0.57 : cracker === 'sparkler' ? 0.46 : 0.62;
@@ -67,6 +69,16 @@ export function createFountainAudio(cracker: Cue) {
   let gain = -1;
 
   return {
+    pop(x: number, y: number, z: number, accent: boolean) {
+      const { muted, volume } = useSettings.getState();
+      if (muted || !volume || sound.state() !== 'loaded') return;
+      const instance = sound.play();
+      const heavy = cracker === 'atom';
+      sound.rate(heavy ? 0.64 : (cracker === 'bijili' ? 1.22 : 0.92) + Math.random() * 0.21, instance);
+      sound.volume(volume * (heavy ? 0.85 : accent ? 0.78 : 0.59), instance);
+      sound.pannerAttr({ distanceModel: 'inverse', refDistance: 2.1, rolloffFactor: 0.75, panningModel: 'HRTF' }, instance);
+      sound.pos(x, y, z, instance);
+    },
     update(camera: Camera, playing: boolean, muted: boolean, volume: number, x: number, y: number, z: number, elapsed = 0) {
       const targetGain = muted ? 0 : volume * baseGain * variation;
       if (targetGain !== gain) {
@@ -80,7 +92,7 @@ export function createFountainAudio(cracker: Cue) {
         }
         return;
       }
-      if (id === undefined && sound.state() === 'loaded') {
+      if (!perPop && id === undefined && sound.state() === 'loaded') {
         id = sound.play();
         sound.pannerAttr({
           distanceModel: 'inverse', refDistance: isAerial ? 2.8 : 1.3,
@@ -101,6 +113,9 @@ export function createFountainAudio(cracker: Cue) {
       Howler.pos(listener.x, listener.y, listener.z);
       Howler.orientation(forward.x, forward.y, forward.z, up.x, up.y, up.z);
     },
-    dispose() { if (id !== undefined) sound.stop(id); },
+    dispose() {
+      if (perPop) sound.stop();
+      else if (id !== undefined) sound.stop(id);
+    },
   };
 }

@@ -15,6 +15,8 @@ import type { CapShot } from '../fireworks/CapPistols';
 import { crackers, pistols } from '../fireworks/registry';
 import type { CrackerId, PistolId } from '../fireworks/registry';
 import { FireworkEffect } from '../fireworks/FireworkEffect';
+import { PaperDebris } from '../fireworks/PaperDebris';
+import type { PaperPool } from '../fireworks/PaperDebris';
 import { FirecrackerShop } from '../shop/FirecrackerShop';
 import { parseShopAim, shop } from '../store/shop';
 import type { Action } from '../fireworks/lifecycle';
@@ -67,6 +69,7 @@ export function App() {
   const xrLeftPointer = useRef<Object3D>(null);
   const fuse = useRef<Object3D>(null);
   const fireworkLight = useRef<PointLight>(null);
+  const paper = useRef<PaperPool>(null);
   const capLight = useRef<PointLight>(null);
   const [xrSupported, setXRSupported] = useState(false);
   const [xrActive, setXRActive] = useState(false);
@@ -105,6 +108,7 @@ export function App() {
     setFeedback(pistols[id].label + ' equipped.');
   }, [pistol]);
   const reset = useCallback(() => {
+    paper.current?.clear();
     setPistol(null);
     setRounds(0);
     setShot(null);
@@ -228,6 +232,7 @@ export function App() {
           <Suspense fallback={null}>
             <Courtyard litDiyas={litDiyas} />
             <FirecrackerShop aimed={target ? aim : null} />
+            <PaperDebris pool={paper} />
             <pointLight ref={fireworkLight} intensity={0} />
             <pointLight ref={capLight} intensity={0} color="#ff9e52" distance={1.4} />
             <NightAmbience active={locked || touchActive || xrActive} fireworks={firework.stage === 'burning' || shot !== null} />
@@ -240,7 +245,7 @@ export function App() {
               && !pistol && <Taper lit={taperLit} xrActive={xrActive} pointer={xrPointer} {...{ fuse, canIgnite, litDiyas }}
                 onLight={lightTaper} onDiya={lightDiya} onIgnite={ignite} />}
             {firework.stage === 'burning' && <FireworkEffect id={firework.id} ground={firework.ground}
-              onFinish={finish} touchActive={touchActive} xrActive={xrActive} pointer={xrLeftPointer} light={fireworkLight} />}
+              onFinish={finish} touchActive={touchActive} xrActive={xrActive} pointer={xrLeftPointer} light={fireworkLight} paper={paper} />}
             <Player {...{ onLockChange, onLockError, touchActive, touchMove }} />
             <Selection firework={firework} onAim={setAim} onAction={act} onFeedback={setFeedback}
               onLightTaper={lightTaper} onLightDiya={lightDiya}
