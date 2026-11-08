@@ -11,6 +11,7 @@ import type { CapShot } from '../fireworks/CapPistols';
 import type { ShopAim } from '../store/shop';
 import { shop } from '../store/shop';
 import { playShopCue } from '../audio/fountain';
+import { roomTable } from '../scene/layout';
 
 export type Aim = CrackerId | PistolId | ShopAim | 'ground' | 'diya' | null;
 export type InputAction = 'pick' | 'place' | 'ignite' | 'reset' | 'use' | 'shoot';
@@ -23,6 +24,7 @@ interface Props {
   touchActive: boolean;
   touchAction: RefObject<((action: InputAction) => void) | null>;
   xrActive: boolean;
+  passthrough: boolean;
   xrPointer: RefObject<Object3D | null>;
   litDiyas: ReadonlySet<number>;
   taperLit: boolean;
@@ -37,7 +39,7 @@ interface Props {
 const center = new Vector2();
 
 export function Selection({
-  firework, onAim, onAction, onFeedback, touchActive, touchAction, xrActive, xrPointer,
+  firework, onAim, onAction, onFeedback, touchActive, touchAction, xrActive, xrPointer, passthrough,
   litDiyas, taperLit, onLightTaper, onLightDiya,
   pistol, onEquip, onShoot, onReset,
 }: Props) {
@@ -76,7 +78,7 @@ export function Selection({
     const intersection = interactive && (xrActive || touchActive || document.pointerLockElement === gl.domElement)
       ? hit()?.intersection : undefined;
     const ground = firework.stage === 'held' && crackers[firework.id].placement === 'ground'
-      ? placement(intersection) : null;
+      ? placement(intersection, passthrough) : null;
     if (marker.current) {
       marker.current.visible = ground !== null;
       if (ground) {
@@ -190,9 +192,10 @@ export function Selection({
         case 'pick': pick(currentHit); break;
         case 'place': {
           if (firework.stage !== 'held' || crackers[firework.id].placement !== 'ground') return;
-          const ground = placement(currentHit);
+          const ground = placement(currentHit, passthrough);
           if (ground) onAction({ type: 'place', ground });
-          else onFeedback('Aim at open paving in the middle of the courtyard.');
+          else onFeedback(passthrough ? 'Aim at a clear spot on the floor a little farther away.'
+            : 'Aim at open paving in the middle of the courtyard.');
           break;
         }
         case 'ignite':
@@ -227,7 +230,7 @@ export function Selection({
       canvas.removeEventListener('pointercancel', endTap);
       window.removeEventListener('keydown', keydown);
     };
-  }, [camera, firework, gl, hit, litDiyas, onAction, onEquip, onFeedback, onLightDiya, onLightTaper, onReset, onShoot, pistol, taperLit, touchActive, touchAction, xrActive, xrPointer]);
+  }, [camera, firework, gl, hit, litDiyas, onAction, onEquip, onFeedback, onLightDiya, onLightTaper, onReset, onShoot, passthrough, pistol, taperLit, touchActive, touchAction, xrActive, xrPointer]);
 
   return (
     <mesh ref={marker} visible={false} rotation-x={-Math.PI / 2} raycast={() => {}}>
@@ -276,8 +279,13 @@ function aimedAtShop(hit?: Intersection): ShopAim | null {
   return null;
 }
 
-function placement(hit?: Intersection): Ground | null {
+function placement(hit: Intersection | undefined, passthrough: boolean): Ground | null {
   if (!hit?.object.userData.stagingSurface || hit.distance < 1.8) return null;
   const { x, z } = hit.point;
+  if (passthrough) {
+    const nearCounter = Math.abs(x - roomTable.x) < roomTable.width / 2 + 0.3
+      && Math.abs(z - roomTable.z) < roomTable.depth / 2 + 0.3;
+    return !nearCounter && Math.hypot(x, z) <= 3 ? [x, 0, z] : null;
+  }
   return Math.abs(x) < 3.6 && z > -1.65 && z < 4 ? [x, 0, z] : null;
 }

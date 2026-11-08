@@ -24,8 +24,9 @@ import { disposeAudio, prepareAudio } from '../audio/fountain';
 import { NightAmbience } from '../audio/NightAmbience';
 import { qualityOptions, useSettings } from '../store/settings';
 import { Courtyard, initialLitDiyas } from '../scene/Courtyard';
+import { Room } from '../scene/Room';
 import { Taper } from '../fireworks/Taper';
-import { eyeHeight } from '../scene/layout';
+import { eyeHeight, roomDiyaLocations, roomTable } from '../scene/layout';
 import { CourtyardHud } from '../ui/CourtyardHud';
 
 function Unavailable() {
@@ -72,7 +73,11 @@ export function App() {
   const paper = useRef<PaperPool>(null);
   const capLight = useRef<PointLight>(null);
   const [xrSupported, setXRSupported] = useState(false);
-  const [xrActive, setXRActive] = useState(false);
+  const [mrSupported, setMRSupported] = useState(false);
+  const [xrMode, setXRMode] = useState<'immersive-ar' | 'immersive-vr' | null>(null);
+  const xrActive = xrMode !== null;
+  const passthrough = xrMode === 'immersive-ar';
+  const counter = passthrough ? roomTable : undefined;
   const [taperLit, setTaperLit] = useState(false);
   const [litDiyas, setLitDiyas] = useState<ReadonlySet<number>>(initialLitDiyas);
   const lightTaper = useCallback(() => setTaperLit(true), []);
@@ -129,21 +134,36 @@ export function App() {
       void navigator.xr?.isSessionSupported('immersive-vr').then(supported => {
         if (mounted) setXRSupported(supported);
       }).catch(() => {});
+      void navigator.xr?.isSessionSupported('immersive-ar').then(supported => {
+        if (mounted) setMRSupported(supported);
+      }).catch(() => {});
     }
-    const unsubscribe = questStore.subscribe(state => setXRActive(Boolean(state.session)));
+    const unsubscribe = questStore.subscribe((state, previous) => {
+      if (state.mode === previous.mode) return;
+      if (state.mode === 'immersive-ar' || previous.mode === 'immersive-ar') {
+        reset();
+        setTaperLit(false);
+        setLitDiyas(initialLitDiyas);
+        setAim(null);
+      }
+      setXRMode(state.mode === 'inline' ? null : state.mode);
+    });
     return () => { mounted = false; unsubscribe(); };
-  }, []);
+  }, [reset]);
 
-  function enterVR() {
+  function enterXR(mode: 'immersive-ar' | 'immersive-vr') {
     prepareAudio();
     setTouchActive(false);
     if (document.pointerLockElement) document.exitPointerLock();
-    void questStore.enterVR().then(session => {
+    const sessionRequest = mode === 'immersive-ar' ? questStore.enterAR() : questStore.enterVR();
+    void sessionRequest.then(session => {
       if (session) {
         setVisited(true);
         setLockError('');
       } else setLockError('The immersive session could not start.');
-    }).catch(() => setLockError('Unable to enter VR. Open this HTTPS page in Meta Quest Browser.'));
+    }).catch(() => setLockError(mode === 'immersive-ar'
+      ? 'Unable to start mixed reality. Check floor setup and open this HTTPS page in Meta Quest Browser.'
+      : 'Unable to enter VR. Open this HTTPS page in Meta Quest Browser.'));
   }
 
   useEffect(() => {
@@ -154,6 +174,7 @@ export function App() {
 
   const onCreated = useCallback(({ gl, camera }: RootState) => {
     canvas.current = gl.domElement;
+    gl.setClearAlpha(0);
     camera.lookAt(0, 1.42, -5.2);
   }, []);
 
@@ -211,7 +232,7 @@ export function App() {
     : pistol ? 'Aim and pull right trigger to fire · Unlimited caps'
     : !taperLit ? 'Touch your stick tip to a burning diya'
     : firework.stage === 'held' && firework.id === 'sparkler' ? 'Touch the stick to the left-hand sparkler'
-    : firework.stage === 'held' ? 'Aim to place, or ignite the sparkler'
+    : firework.stage === 'held' ? (passthrough ? 'Aim at clear floor and pull right trigger' : 'Aim to place, or ignite the sparkler')
     : firework.stage === 'placed' ? 'Touch the glowing tip to the fuse' : 'Choose a box at the shop');
 
   return (
@@ -223,21 +244,22 @@ export function App() {
         onCreated={onCreated}
       >
         <XR store={questStore}>
-          <QuestRig active={xrActive} pointer={xrPointer} leftPointer={xrLeftPointer} actions={touchAction} hint={xrHint} />
+          <QuestRig active={xrActive} passthrough={passthrough} pointer={xrPointer} leftPointer={xrLeftPointer} actions={touchAction} hint={xrHint} />
           <Suspense fallback={null}>
-            <Courtyard litDiyas={litDiyas} />
-            <FirecrackerShop aimed={target ? aim : null} />
+            {passthrough ? <Room litDiyas={litDiyas} /> : <Courtyard litDiyas={litDiyas} />}
+            <FirecrackerShop aimed={target ? aim : null} counter={counter} />
             <PaperDebris pool={paper} />
             <pointLight ref={fireworkLight} intensity={0} />
             <pointLight ref={capLight} intensity={0} color="#ff9e52" distance={1.4} />
-            <NightAmbience active={locked || touchActive || xrActive} fireworks={firework.stage === 'burning' || shot !== null} />
+            {!passthrough && <NightAmbience active={locked || touchActive || xrActive} fireworks={firework.stage === 'burning' || shot !== null} />}
             <CrackerProps firework={firework} touchActive={touchActive} xrActive={xrActive} pointer={xrPointer}
               leftPointer={xrLeftPointer} fuse={fuse}
               aim={(locked || touchActive || xrActive) && aim && aim in crackers ? aim as CrackerId : null} />
-            <CapPistols equipped={pistol} aimed={aim === 'cap' || aim === 'roll' ? aim : null} shot={shot} xrActive={xrActive} pointer={xrPointer} />
+            <CapPistols equipped={pistol} aimed={aim === 'cap' || aim === 'roll' ? aim : null} shot={shot} xrActive={xrActive} pointer={xrPointer} counter={counter} />
             {shot && <CapFlash key={shot.at} shot={shot} onComplete={clearShot} light={capLight} />}
             {(locked || touchActive || xrActive) && firework.stage !== 'burning'
               && !pistol && <Taper lit={taperLit} xrActive={xrActive} pointer={xrPointer} {...{ fuse, canIgnite, litDiyas }}
+                locations={passthrough ? roomDiyaLocations : undefined}
                 onLight={lightTaper} onDiya={lightDiya} onIgnite={ignite} />}
             {firework.stage === 'burning' && <FireworkEffect id={firework.id} ground={firework.ground}
               onFinish={finish} touchActive={touchActive} xrActive={xrActive} pointer={xrLeftPointer} light={fireworkLight} paper={paper} />}
@@ -245,18 +267,19 @@ export function App() {
             <Selection firework={firework} onAim={setAim} onAction={act} onFeedback={setFeedback}
               onLightTaper={lightTaper} onLightDiya={lightDiya}
               onEquip={equip} onShoot={shoot} onReset={reset}
-              {...{ touchActive, touchAction, xrActive, xrPointer, litDiyas, taperLit, pistol }} />
+              {...{ touchActive, touchAction, xrActive, xrPointer, litDiyas, taperLit, pistol, passthrough }} />
             <SceneReady onReady={setReady} />
           </Suspense>
         </XR>
       </Canvas>
       {!xrActive && <CourtyardHud
-        {...{ ready, visited, lockError, aim, firework, feedback, touch, touchMove, taperLit, xrSupported, pistol, shopPrompt }}
+        {...{ ready, visited, lockError, aim, firework, feedback, touch, touchMove, taperLit, xrSupported, mrSupported, pistol, shopPrompt }}
         locked={locked || touchActive}
         onTouchAction={action => touchAction.current?.(action)}
         onTouchPause={() => setTouchActive(false)}
         onEnter={enter}
-        onEnterVR={enterVR}
+        onEnterVR={() => enterXR('immersive-vr')}
+        onEnterMR={() => enterXR('immersive-ar')}
       />}
     </main>
   );

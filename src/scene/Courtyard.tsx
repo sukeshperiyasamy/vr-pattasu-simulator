@@ -88,7 +88,9 @@ function Rangoli() {
   );
 }
 
-function DiyaInstances({ lit }: { lit: ReadonlySet<number> }) {
+export function DiyaInstances({ lit, locations = diyaLocations }: {
+  lit: ReadonlySet<number>; locations?: readonly (readonly [number, number, number])[];
+}) {
   const { scene } = useLoader(GLTFLoader, assets + 'diya.glb');
   const meshes = useMemo(() => {
     const parts: Mesh[] = [];
@@ -102,7 +104,7 @@ function DiyaInstances({ lit }: { lit: ReadonlySet<number> }) {
     instances.current.forEach((instance, index) => {
       if (!instance) return;
       const flame = meshes[index].name.toLowerCase().includes('flame');
-      diyaLocations.forEach(([x, y, z], i) => {
+      locations.forEach(([x, y, z], i) => {
         transform.makeRotationY(-Math.PI / 2);
         if (flame && !lit.has(i)) transform.makeScale(0.000001, 0.000001, 0.000001);
         instance.setMatrixAt(i, transform.setPosition(x, y, z));
@@ -110,13 +112,13 @@ function DiyaInstances({ lit }: { lit: ReadonlySet<number> }) {
       instance.instanceMatrix.needsUpdate = true;
       instance.computeBoundingSphere();
     });
-  }, [lit, meshes]);
+  }, [lit, locations, meshes]);
 
   return meshes.map((mesh, index) => (
     <instancedMesh
       key={mesh.uuid}
       ref={instance => { instances.current[index] = instance; }}
-      args={[mesh.geometry, mesh.material, diyaLocations.length]}
+      args={[mesh.geometry, mesh.material, locations.length]}
       userData={{ diya: true }}
     />
   ));

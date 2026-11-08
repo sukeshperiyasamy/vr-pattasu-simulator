@@ -5,10 +5,11 @@ import { Quaternion, Vector3 } from 'three';
 import type { Group, Object3D } from 'three';
 import { diyaLocations } from '../scene/Courtyard';
 
-export function Taper({ lit, xrActive, pointer, fuse, canIgnite, litDiyas, onLight, onDiya, onIgnite }: {
+export function Taper({ lit, xrActive, pointer, fuse, canIgnite, litDiyas, onLight, onDiya, onIgnite, locations = diyaLocations }: {
   lit: boolean; xrActive: boolean; pointer: RefObject<Object3D | null>;
   fuse: RefObject<Object3D | null>; canIgnite: boolean; litDiyas: ReadonlySet<number>;
   onLight: () => void; onDiya: (index: number) => void; onIgnite: () => void;
+  locations?: readonly (readonly [number, number, number])[];
 }) {
   const mesh = useRef<Group>(null);
   const tip = useRef<Object3D>(null);
@@ -31,9 +32,9 @@ export function Taper({ lit, xrActive, pointer, fuse, canIgnite, litDiyas, onLig
     let target = -1;
     if (lit && canIgnite && fuse.current && fuse.current.parent?.visible
       && ember.distanceToSquared(fuse.current.getWorldPosition(transform.target)) < 0.085 ** 2) {
-      target = diyaLocations.length;
+      target = locations.length;
     } else {
-      target = diyaLocations.findIndex(([x, y, z], index) => (
+      target = locations.findIndex(([x, y, z], index) => (
         litDiyas.has(index) !== lit
         && ember.distanceToSquared(transform.target.set(x - 0.018, y + 0.06, z + 0.06)) < 0.095 ** 2
       ));
@@ -49,7 +50,7 @@ export function Taper({ lit, xrActive, pointer, fuse, canIgnite, litDiyas, onLig
     previous.seconds = -Infinity;
     const right = Array.from(gl.xr.getSession()?.inputSources ?? []).find(source => source.handedness === 'right');
     void right?.gamepad?.hapticActuators?.[0]?.pulse?.(0.25, 45).catch(() => {});
-    if (target === diyaLocations.length) onIgnite();
+    if (target === locations.length) onIgnite();
     else if (lit) onDiya(target);
     else onLight();
   });

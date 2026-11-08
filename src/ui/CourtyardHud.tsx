@@ -22,14 +22,16 @@ interface HudProps {
   onEnter: () => void;
   taperLit: boolean;
   xrSupported: boolean;
+  mrSupported: boolean;
   onEnterVR: () => void;
+  onEnterMR: () => void;
   pistol: PistolId | null;
   shopPrompt: { title: string; stock: number; action: string; animating: boolean } | null;
 }
 
 export function CourtyardHud({
   ready, locked, visited, lockError, aim, firework, feedback, touch, touchMove,
-  onTouchAction, onTouchPause, onEnter, taperLit, xrSupported, onEnterVR, pistol, shopPrompt,
+  onTouchAction, onTouchPause, onEnter, taperLit, xrSupported, mrSupported, onEnterVR, onEnterMR, pistol, shopPrompt,
 }: HudProps) {
   const { quality, muted, reducedFlash, volume, update } = useSettings();
   const stage = firework.stage;
@@ -84,6 +86,12 @@ export function CourtyardHud({
             {xrSupported && <button type="button" className="enter-button vr-button" disabled={!ready} onClick={onEnterVR}>
               Enter VR
             </button>}
+            {xrSupported && mrSupported && <div>
+              <button type="button" className="enter-button" disabled={!ready} onClick={onEnterMR}>
+                Play in Your Room
+              </button>
+              <p className="entry-description">Mixed reality passthrough. Start facing clear floor space.</p>
+            </div>}
             {touch ? <p className="controls">Drag to look. Use the joystick to move and the on-screen buttons to interact.</p> :
             <ul className="controls" aria-label="Desktop controls">
               <li><kbd>W A S D</kbd> Move</li>

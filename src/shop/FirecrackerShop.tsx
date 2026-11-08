@@ -133,7 +133,9 @@ const FirecrackerBox = memo(function FirecrackerBox({ id, material, geometry, ai
   );
 });
 
-export const FirecrackerShop = memo(function FirecrackerShop({ aimed }: { aimed: string | null }) {
+export const FirecrackerShop = memo(function FirecrackerShop({ aimed, counter = table }: {
+  aimed: string | null; counter?: typeof table;
+}) {
   const trays = useRef<InstancedMesh>(null);
   const resources = useMemo(() => {
     const texture = paintAtlas();
@@ -165,7 +167,7 @@ export const FirecrackerShop = memo(function FirecrackerShop({ aimed }: { aimed:
   }, [resources]);
 
   return (
-    <group position={[table.x, table.height + 0.004, table.z]} name="Pattasu shop">
+    <group position={[counter.x, counter.height + 0.004, counter.z]} name="Pattasu shop">
       <mesh position={[0, 0.291, -0.16]} receiveShadow>
         <boxGeometry args={[1.49, 0.036, 0.25]} />
         <meshStandardMaterial color="#513526" roughness={0.88} />

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import type { RefObject } from 'react';
 import { createXRStore, XROrigin } from '@react-three/xr';
 import { useFrame, useThree } from '@react-three/fiber';
@@ -17,13 +17,14 @@ export const questStore = createXRStore({
 
 interface Props {
   active: boolean;
+  passthrough: boolean;
   pointer: RefObject<Object3D | null>;
   leftPointer: RefObject<Object3D | null>;
   actions: RefObject<((action: InputAction) => void) | null>;
   hint: string;
 }
 
-function Guide({ hint }: { hint: string }) {
+function Guide({ hint, passthrough }: { hint: string; passthrough: boolean }) {
   const sprite = useRef<Sprite>(null);
   const screen = useMemo(() => {
     const canvas = document.createElement('canvas');
@@ -48,9 +49,10 @@ function Guide({ hint }: { hint: string }) {
     ctx.fillText(hint, 512, 81, 950);
     ctx.fillStyle = '#d7cfc5';
     ctx.font = '32px system-ui';
-    ctx.fillText('Left trigger: teleport   •   Right trigger: interact   •   B: reset', 512, 136, 950);
+    ctx.fillText(passthrough ? 'Right trigger: interact   •   B: reset   •   Quest menu: exit'
+      : 'Left trigger: teleport   •   Right trigger: interact   •   B: reset', 512, 136, 950);
     screen.texture.needsUpdate = true;
-  }, [hint, screen]);
+  }, [hint, passthrough, screen]);
   useFrame(({ camera }) => {
     if (!sprite.current) return;
     camera.getWorldPosition(sprite.current.position);
@@ -65,7 +67,7 @@ function Guide({ hint }: { hint: string }) {
   );
 }
 
-export function QuestRig({ active, pointer, leftPointer, actions, hint }: Props) {
+export function QuestRig({ active, passthrough, pointer, leftPointer, actions, hint }: Props) {
   const { gl } = useThree();
   const origin = useRef<Group>(null);
   const controllers = useMemo(() => [gl.xr.getController(0), gl.xr.getController(1)], [gl]);
@@ -76,6 +78,11 @@ export function QuestRig({ active, pointer, leftPointer, actions, hint }: Props)
   const target = useMemo(() => new Vector3(), []);
   const head = useMemo(() => new Vector3(), []);
 
+  useLayoutEffect(() => {
+    origin.current?.position.set(0, 0, passthrough ? 0 : 5.45);
+    origin.current?.rotation.set(0, 0, 0);
+  }, [active, passthrough]);
+
   useEffect(() => {
     const remove = controllers.map((controller, index) => {
       const connect = (event: { data: XRInputSource }) => { sources.current[index] = event.data; };
@@ -83,6 +90,7 @@ export function QuestRig({ active, pointer, leftPointer, actions, hint }: Props)
       const select = (event: { data: XRInputSource }) => {
         if (!gl.xr.isPresenting || !origin.current || event.data.targetRayMode !== 'tracked-pointer') return;
         if (event.data.handedness === 'left') {
+          if (passthrough) return;
           controller.getWorldPosition(ray.origin);
           controller.getWorldDirection(ray.direction).negate();
           if (ray.direction.y >= -0.08) return;
@@ -109,7 +117,7 @@ export function QuestRig({ active, pointer, leftPointer, actions, hint }: Props)
       };
     });
     return () => { remove.forEach(dispose => dispose()); pointer.current = leftPointer.current = null; };
-  }, [actions, controllers, gl, head, leftPointer, pointer, ray, target]);
+  }, [actions, controllers, gl, head, leftPointer, passthrough, pointer, ray, target]);
 
   useFrame(() => {
     if (!active || !origin.current) {
@@ -126,6 +134,7 @@ export function QuestRig({ active, pointer, leftPointer, actions, hint }: Props)
     const reset = Boolean(pad?.buttons[5]?.pressed);
     if (reset && !previousButtons.current[index]) actions.current?.('reset');
     previousButtons.current[index] = reset;
+    if (passthrough) return;
     const axis = pad?.axes[2] ?? 0;
     if (Math.abs(axis) < 0.3) snapReady.current = true;
     if (!snapReady.current || Math.abs(axis) < 0.75) return;
@@ -141,7 +150,7 @@ export function QuestRig({ active, pointer, leftPointer, actions, hint }: Props)
 
   return (
     <>
-      <XROrigin name="Quest origin" ref={origin} position={[0, 0, 5.45]} disabled={!active}>
+      <XROrigin name="Quest origin" ref={origin} disabled={!active}>
         {controllers.map((controller, index) => (
           <primitive object={controller} key={controller.uuid}>
             {active && <mesh position-z={-0.53} raycast={() => {}}>
@@ -151,7 +160,7 @@ export function QuestRig({ active, pointer, leftPointer, actions, hint }: Props)
           </primitive>
         ))}
       </XROrigin>
-      {active && <Guide hint={hint} />}
+      {active && <Guide hint={hint} passthrough={passthrough} />}
     </>
   );
 }

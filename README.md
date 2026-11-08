@@ -64,6 +64,12 @@ Use the on-screen joystick to move and drag to look around. Tap a box or its con
 
 The Quest controller workflow was checked with WebXR emulation. Physical headset testing is pending, including comfort and performance.
 
+### Play in Your Room (mixed reality)
+
+On a supported headset, open the HTTPS site in Meta Quest Browser and choose **Play in Your Room** below **Enter VR**. Start facing an open area with your headset's floor level set. A virtual shop appears in front of you over the headset's passthrough view. Use the right trigger to open a box, take a firecracker, and place it on clear floor away from the counter. Light it with the virtual diya and incense stick, or use a toy cap pistol.
+
+The mode uses the headset's tracked floor. Furniture and walls are outside its placement and occlusion model. Move and turn physically within your clear play area. Use the Quest system menu to exit.
+
 ## Run locally
 
 Use **Node.js 24** and npm.

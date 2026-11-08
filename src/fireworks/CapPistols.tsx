@@ -50,9 +50,10 @@ function ToyPistol({ id, highlighted }: { id: PistolId; highlighted: boolean }) 
   );
 }
 
-export function CapPistols({ equipped, aimed, shot, xrActive, pointer }: {
+export function CapPistols({ equipped, aimed, shot, xrActive, pointer, counter = table }: {
   equipped: PistolId | null; aimed: PistolId | null; shot: CapShot | null;
   xrActive: boolean; pointer: RefObject<Object3D | null>;
+  counter?: typeof table;
 }) {
   const held = useRef<Group>(null);
   const pose = useMemo(() => ({ position: new Vector3(), rotation: new Quaternion() }), []);
@@ -74,7 +75,7 @@ export function CapPistols({ equipped, aimed, shot, xrActive, pointer }: {
   return (Object.keys(pistols) as PistolId[]).map(id => (
     equipped === id
       ? <group key={id + '-held'} ref={held} name={pistols[id].label}><ToyPistol id={id} highlighted={false} /></group>
-      : <group key={id} position={[pistols[id].x, table.height + 0.014, table.z + 0.07]} rotation-y={-0.36}
+      : <group key={id} position={[pistols[id].x - table.x + counter.x, counter.height + 0.014, counter.z + 0.07]} rotation-y={-0.36}
           userData={{ pistol: id }}><ToyPistol id={id} highlighted={aimed === id} /></group>
   ));
 }
