@@ -1,0 +1,32 @@
+VR Pattasu Simulator / Courtyard asset credits
+
+Granite Tile by Charlotte Baglioni
+https://polyhaven.com/a/granite_tile
+Painted Plaster Wall by Amal Kumar
+https://polyhaven.com/a/painted_plaster_wall
+Courtyard Night by Greg Zaal
+https://polyhaven.com/a/courtyard_night
+Wooden Table 01 by Ethan Place
+https://polyhaven.com/a/WoodenTable_01
+Poly Haven asset license (CC0): https://polyhaven.com/license
+
+Diwali diya clay oil lamp with flame by Innerscene
+https://www.innerscene.com/tools/library/3d-parts/diwali-diya-clay-oil-lamp-with-flame-c7590741
+CC0: https://creativecommons.org/publicdomain/zero/1.0/
+Embedded texture images resized for the browser.
+
+The veranda is temporary project geometry. The shortlisted Indian Village House by
+saksham12x (CC BY 4.0) is pending an authenticated source download and is not bundled.
+https://sketchfab.com/3d-models/indian-village-house-famous-3d-model-600c68779b334407aefdb94cefbed26b
+https://creativecommons.org/licenses/by/4.0/
+
+Firecracker audio: original synthesized project cues for Busvanam, Kambi Mathappu,
+Sangu Chakram and Sky Shot. The Pixabay reference recording is not bundled.
+
+Quest Touch Plus controller layouts from @webxr-input-profiles/assets 1.0.20.
+https://github.com/immersive-web/webxr-input-profiles
+See webxr-input-profiles-MIT.txt for the license notice.
+
+Phase 7 nighttime ambience and refreshed firecracker cues use original synthesized project audio.
+
+Phase 8 stall geometry, unbranded packaging artwork, and shop sound cues are original project assets.
