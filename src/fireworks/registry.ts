@@ -47,7 +47,7 @@ export function walaCoil(progress: number) {
 }
 
 export const pistols = {
-  cap: { label: 'Single-Cap Pistol', rounds: 1, x: 1.99 },
-  roll: { label: 'Roll-Cap Pistol', rounds: 8, x: 3.46 },
+  cap: { label: 'Single-Cap Pistol', x: 1.99 },
+  roll: { label: 'Roll-Cap Pistol', x: 3.46 },
 } as const;
 export type PistolId = keyof typeof pistols;

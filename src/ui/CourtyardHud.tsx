@@ -24,13 +24,12 @@ interface HudProps {
   xrSupported: boolean;
   onEnterVR: () => void;
   pistol: PistolId | null;
-  rounds: number;
   shopPrompt: { title: string; stock: number; action: string; animating: boolean } | null;
 }
 
 export function CourtyardHud({
   ready, locked, visited, lockError, aim, firework, feedback, touch, touchMove,
-  onTouchAction, onTouchPause, onEnter, taperLit, xrSupported, onEnterVR, pistol, rounds, shopPrompt,
+  onTouchAction, onTouchPause, onEnter, taperLit, xrSupported, onEnterVR, pistol, shopPrompt,
 }: HudProps) {
   const { quality, muted, reducedFlash, volume, update } = useSettings();
   const stage = firework.stage;
@@ -41,7 +40,7 @@ export function CourtyardHud({
     : stage === 'held' ? (target?.placement === 'handheld' ? 'ignite' : 'place')
     : stage === 'placed' ? 'ignite' : null;
   const ignite = !taperLit ? 'Light your taper at a burning diya first' : touch ? 'Tap Ignite' : 'F to ignite virtually';
-  const prompt = pistol ? (rounds ? (touch ? 'Tap Fire' : 'Aim and click to fire') : 'Out of caps · Reset to refill')
+  const prompt = pistol ? (touch ? 'Tap Fire' : 'Aim and click to fire')
     : aimedPistol ? (touch ? 'Tap Pick up' : 'Click or E to equip')
     : aim === 'diya' ? (touch ? 'Tap Use diya' : 'F to use diya')
     : stage === 'available' && aim ? (touch ? 'Tap Pick up' : 'Click or E to pick up')
@@ -120,7 +119,7 @@ export function CourtyardHud({
       )}
       <div className="selection-status" role="status">
         {feedback && locked && <div className="selection-card">{feedback}</div>}
-        {pistol && <div className="selection-card"><strong>{pistols[pistol].label}</strong><span>{rounds} caps left</span></div>}
+        {pistol && <div className="selection-card"><strong>{pistols[pistol].label}</strong><span>Unlimited caps</span></div>}
         {status && target && (
           <div className="selection-card">
             <span className="eyebrow">{target.type.toUpperCase()}</span>

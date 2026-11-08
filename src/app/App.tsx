@@ -90,7 +90,6 @@ export function App() {
   const target = parseShopAim(aim);
   const box = useStore(shop, state => target ? state.boxes[target.id] : null);
   const [pistol, setPistol] = useState<PistolId | null>(null);
-  const [rounds, setRounds] = useState(0);
   const [shot, setShot] = useState<CapShot | null>(null);
   const lastShot = useRef(-Infinity);
   const quality = useSettings(state => state.quality);
@@ -104,28 +103,24 @@ export function App() {
   const equip = useCallback((id: PistolId) => {
     if (id === pistol) return;
     setPistol(id);
-    setRounds(pistols[id].rounds);
     setFeedback(pistols[id].label + ' equipped.');
   }, [pistol]);
   const reset = useCallback(() => {
     paper.current?.clear();
     setPistol(null);
-    setRounds(0);
     setShot(null);
     lastShot.current = -Infinity;
     act({ type: 'reset' });
   }, [act]);
   const shoot = useCallback((next: CapShot, target: CrackerId | null) => {
     if (next.at - lastShot.current < 280) return;
-    if (!rounds) { setFeedback('No caps left. Reset to refill.'); return; }
     lastShot.current = next.at;
-    setRounds(count => count - 1);
     setShot(next);
     if (firework.stage === 'placed' && firework.id === target) {
       act({ type: 'ignite' });
       setFeedback('Direct hit. Firecracker lit.');
     }
-  }, [act, firework, rounds]);
+  }, [act, firework]);
   const clearShot = useCallback(() => setShot(null), []);
   useEffect(() => disposeAudio, []);
   useEffect(() => {
@@ -213,7 +208,7 @@ export function App() {
   } : null;
   const xrHint = feedback || (shopPrompt ? `${shopPrompt.title} · ${shopPrompt.stock ? shopPrompt.stock + ' left' : 'Empty'} · ${shopPrompt.action}`
     : firework.stage === 'burning' && (firework.id === 'skyshot' || firework.id === 'rocket') ? 'Look up for the burst'
-    : pistol ? (rounds ? 'Aim and pull right trigger to fire' : 'Out of caps · B to reset')
+    : pistol ? 'Aim and pull right trigger to fire · Unlimited caps'
     : !taperLit ? 'Touch your stick tip to a burning diya'
     : firework.stage === 'held' && firework.id === 'sparkler' ? 'Touch the stick to the left-hand sparkler'
     : firework.stage === 'held' ? 'Aim to place, or ignite the sparkler'
@@ -256,7 +251,7 @@ export function App() {
         </XR>
       </Canvas>
       {!xrActive && <CourtyardHud
-        {...{ ready, visited, lockError, aim, firework, feedback, touch, touchMove, taperLit, xrSupported, pistol, rounds, shopPrompt }}
+        {...{ ready, visited, lockError, aim, firework, feedback, touch, touchMove, taperLit, xrSupported, pistol, shopPrompt }}
         locked={locked || touchActive}
         onTouchAction={action => touchAction.current?.(action)}
         onTouchPause={() => setTouchActive(false)}

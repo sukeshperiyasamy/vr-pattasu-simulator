@@ -11,9 +11,9 @@ VR Pattasu Simulator is a first-person **Diwali firecracker simulator** set in a
 - Explore a nighttime courtyard with stone paving, rangoli, and clay diyas you can light.
 - Open and close labeled firecracker boxes, check remaining stock, and take individual fireworks from the stall.
 - Light your incense stick from a burning diya, then use it on a fuse. Hold the sparkler in hand or place ground and aerial fireworks in the open courtyard.
-- Try the Single-Cap and Roll-Cap toy pistols. Aim at a placed virtual firecracker to ignite it.
+- Try the Single-Cap and Roll-Cap toy pistols with unlimited caps. Aim at a placed virtual firecracker to ignite it.
 - Watch sparks, drifting smoke, and bursts that briefly light the courtyard, with positional audio and nighttime ambience.
-- Adjust graphics quality, volume, and reduced flashes. Reset the courtyard to restock the shop and refill pistol caps.
+- Adjust graphics quality, volume, and reduced flashes. Reset the courtyard to restock the shop.
 
 [See an open firecracker box](VR_Pattasu_Starter_Docs/evidence/phase8-open-box.png) · [See a Sky Shot aerial burst](VR_Pattasu_Starter_Docs/evidence/skyshot-enhanced.png)
 
