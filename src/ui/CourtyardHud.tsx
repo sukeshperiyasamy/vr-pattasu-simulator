@@ -26,7 +26,7 @@ interface HudProps {
   onEnterVR: () => void;
   onEnterMR: () => void;
   pistol: PistolId | null;
-  shopPrompt: { title: string; stock: number; action: string; animating: boolean } | null;
+  shopPrompt: { title: string; empty: boolean; action: string; animating: boolean } | null;
 }
 
 export function CourtyardHud({
@@ -38,11 +38,12 @@ export function CourtyardHud({
   const aimedPistol = aim === 'cap' || aim === 'roll' ? pistols[aim] : null;
   const target = firework.stage !== 'available' ? crackers[firework.id]
     : aim && aim in crackers ? crackers[aim as keyof typeof crackers] : null;
-  const touchAction = shopPrompt ? (shopPrompt.animating ? null : 'pick') : pistol ? 'shoot' : aimedPistol ? 'pick' : aim === 'diya' ? 'use' : stage === 'available' ? (aim ? 'pick' : null)
+  const touchAction = shopPrompt ? (shopPrompt.animating ? null : 'pick') : pistol ? 'shoot' : aim === 'spent' ? 'replay' : aimedPistol ? 'pick' : aim === 'diya' ? 'use' : stage === 'available' ? (aim ? 'pick' : null)
     : stage === 'held' ? (target?.placement === 'handheld' ? 'ignite' : 'place')
     : stage === 'placed' ? 'ignite' : null;
   const ignite = !taperLit ? 'Light your taper at a burning diya first' : touch ? 'Tap Ignite' : 'F to ignite virtually';
   const prompt = pistol ? (touch ? 'Tap Fire' : 'Aim and click to fire')
+    : aim === 'spent' ? (touch ? 'Tap Replay' : 'Hold click, then release to replay')
     : aimedPistol ? (touch ? 'Tap Pick up' : 'Click or E to equip')
     : aim === 'diya' ? (touch ? 'Tap Use diya' : 'F to use diya')
     : stage === 'available' && aim ? (touch ? 'Tap Pick up' : 'Click or E to pick up')
@@ -65,7 +66,7 @@ export function CourtyardHud({
           <span className={aim ? 'reticle reticle-active' : 'reticle'} aria-hidden="true" />
           {shopPrompt ? <div className="aim-prompt" role="status">
             <span>{shopPrompt.title}</span>
-            <span>{shopPrompt.stock ? shopPrompt.stock + ' left' : 'Box empty · Reset to restock'}</span>
+            {shopPrompt.empty && <span>Box empty · Reset to restock</span>}
             <span>{shopPrompt.action}{!touch && !shopPrompt.animating ? ' · Click / E' : ''}</span>
           </div> : prompt && <div className="aim-prompt"><span>{pistol ? pistols[pistol].label : aimedPistol?.label ?? (aim === 'diya' ? 'Clay diya' : target?.label)}</span><span>{prompt}</span></div>}
           {touch

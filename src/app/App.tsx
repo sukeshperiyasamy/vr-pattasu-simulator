@@ -9,7 +9,7 @@ import { QuestRig, questStore } from '../input/QuestRig';
 import { Player } from '../input/Player';
 import { Selection } from '../interaction/Selection';
 import type { Aim, InputAction } from '../interaction/Selection';
-import { CrackerProps } from '../fireworks/CrackerProps';
+import { CrackerProps, PropShape } from '../fireworks/CrackerProps';
 import { CapFlash, CapPistols } from '../fireworks/CapPistols';
 import type { CapShot } from '../fireworks/CapPistols';
 import { crackers, pistols } from '../fireworks/registry';
@@ -92,6 +92,7 @@ export function App() {
   const [aim, setAim] = useState<Aim>(null);
   const [feedback, setFeedback] = useState('');
   const firework = useStore(shop, state => state.firework);
+  const spent = useStore(shop, state => state.spent);
   const target = parseShopAim(aim);
   const box = useStore(shop, state => target ? state.boxes[target.id] : null);
   const [pistol, setPistol] = useState<PistolId | null>(null);
@@ -105,10 +106,10 @@ export function App() {
   const finish = useCallback(() => act({ type: 'finish' }), [act]);
   const ignite = useCallback(() => act({ type: 'ignite' }), [act]);
   const canIgnite = firework.stage === 'placed' || (firework.stage === 'held' && crackers[firework.id].placement === 'handheld');
-  const equip = useCallback((id: PistolId) => {
+  const equip = useCallback((id: PistolId | null) => {
     if (id === pistol) return;
     setPistol(id);
-    setFeedback(pistols[id].label + ' equipped.');
+    setFeedback(id ? pistols[id].label + ' equipped.' : 'Pistol returned to the counter.');
   }, [pistol]);
   const reset = useCallback(() => {
     paper.current?.clear();
@@ -220,16 +221,18 @@ export function App() {
 
   if (failed) return <Unavailable />;
 
-  const shopPrompt = target && box && !pistol ? {
+  const shopPrompt = target && box ? {
     title: crackers[target.id].label,
-    stock: box.stock,
+    empty: box.stock === 0,
     action: target.part === 'stock' ? 'Take one' : box.phase === 'closed' ? 'Open box'
       : box.phase === 'opening' ? 'Opening…' : box.phase === 'closing' ? 'Closing…' : 'Close box',
     animating: box.phase === 'opening' || box.phase === 'closing',
   } : null;
-  const xrHint = feedback || (shopPrompt ? `${shopPrompt.title} · ${shopPrompt.stock ? shopPrompt.stock + ' left' : 'Empty'} · ${shopPrompt.action}`
+  const xrHint = feedback || (shopPrompt ? `${shopPrompt.title} · ${shopPrompt.empty ? 'Empty · ' : ''}${shopPrompt.action}`
+    : aim === 'spent' ? 'Hold right trigger, then release to replay'
     : firework.stage === 'burning' && (firework.id === 'skyshot' || firework.id === 'rocket') ? 'Look up for the burst'
-    : pistol ? 'Aim and pull right trigger to fire · Unlimited caps'
+    : pistol ? (passthrough ? 'Left trigger: fire · Left grip: return pistol'
+      : 'Left trigger: fire · Grip: holster · Stick click: teleport')
     : !taperLit ? 'Touch your stick tip to a burning diya'
     : firework.stage === 'held' && firework.id === 'sparkler' ? 'Touch the stick to the left-hand sparkler'
     : firework.stage === 'held' ? (passthrough ? 'Aim at clear floor and pull right trigger' : 'Aim to place, or ignite the sparkler')
@@ -244,7 +247,7 @@ export function App() {
         onCreated={onCreated}
       >
         <XR store={questStore}>
-          <QuestRig active={xrActive} passthrough={passthrough} pointer={xrPointer} leftPointer={xrLeftPointer} actions={touchAction} hint={xrHint} />
+          <QuestRig active={xrActive} passthrough={passthrough} armed={pistol !== null} pointer={xrPointer} leftPointer={xrLeftPointer} actions={touchAction} hint={xrHint} />
           <Suspense fallback={null}>
             {passthrough ? <Room litDiyas={litDiyas} /> : <Courtyard litDiyas={litDiyas} />}
             <FirecrackerShop aimed={target ? aim : null} counter={counter} />
@@ -255,10 +258,15 @@ export function App() {
             <CrackerProps firework={firework} touchActive={touchActive} xrActive={xrActive} pointer={xrPointer}
               leftPointer={xrLeftPointer} fuse={fuse}
               aim={(locked || touchActive || xrActive) && aim && aim in crackers ? aim as CrackerId : null} />
-            <CapPistols equipped={pistol} aimed={aim === 'cap' || aim === 'roll' ? aim : null} shot={shot} xrActive={xrActive} pointer={xrPointer} counter={counter} />
+            {spent.map(({ id, ground }, index) => (
+              <group key={index} position={ground} userData={{ spentIndex: index }}>
+                <PropShape id={id} highlighted={false} spent />
+              </group>
+            ))}
+            <CapPistols equipped={pistol} aimed={aim === 'cap' || aim === 'roll' ? aim : null} shot={shot} xrActive={xrActive} pointer={xrLeftPointer} counter={counter} />
             {shot && <CapFlash key={shot.at} shot={shot} onComplete={clearShot} light={capLight} />}
             {(locked || touchActive || xrActive) && firework.stage !== 'burning'
-              && !pistol && <Taper lit={taperLit} xrActive={xrActive} pointer={xrPointer} {...{ fuse, canIgnite, litDiyas }}
+              && (!pistol || xrActive) && <Taper lit={taperLit} xrActive={xrActive} pointer={xrPointer} {...{ fuse, canIgnite, litDiyas }}
                 locations={passthrough ? roomDiyaLocations : undefined}
                 onLight={lightTaper} onDiya={lightDiya} onIgnite={ignite} />}
             {firework.stage === 'burning' && <FireworkEffect id={firework.id} ground={firework.ground}
@@ -267,7 +275,7 @@ export function App() {
             <Selection firework={firework} onAim={setAim} onAction={act} onFeedback={setFeedback}
               onLightTaper={lightTaper} onLightDiya={lightDiya}
               onEquip={equip} onShoot={shoot} onReset={reset}
-              {...{ touchActive, touchAction, xrActive, xrPointer, litDiyas, taperLit, pistol, passthrough }} />
+              {...{ touchActive, touchAction, xrActive, xrPointer, xrLeftPointer, litDiyas, taperLit, pistol, passthrough }} />
             <SceneReady onReady={setReady} />
           </Suspense>
         </XR>

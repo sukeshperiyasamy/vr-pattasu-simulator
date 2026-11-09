@@ -22,6 +22,7 @@ type BoxPhase = 'closed' | 'opening' | 'open' | 'empty' | 'closing';
 type Box = { phase: BoxPhase; stock: number; revision: number };
 export type ShopAim = `${'box' | 'stock'}:${CrackerId}`;
 type Boxes = Record<CrackerId, Box>;
+type Spent = { id: CrackerId; ground: NonNullable<Extract<Firework, { stage: 'burning' | 'finished' }>['ground']> };
 export type TakeResult = 'taken' | 'busy' | 'empty' | 'closed' | 'failed';
 
 function restock(previous?: Boxes): Boxes {
@@ -33,6 +34,7 @@ function restock(previous?: Boxes): Boxes {
 interface ShopState {
   boxes: Boxes;
   firework: Firework;
+  spent: Spent[];
   toggle: (id: CrackerId) => 'opening' | 'closing' | null;
   settle: (id: CrackerId, revision: number) => void;
   take: (id: CrackerId) => TakeResult;
@@ -40,9 +42,14 @@ interface ShopState {
 }
 
 export function createShopStore(advance = transition) {
+  function archive(spent: Spent[], firework: Firework) {
+    return firework.stage === 'finished' && firework.ground
+      ? [...spent, { id: firework.id, ground: firework.ground }].slice(-12) : spent;
+  }
   return createStore<ShopState>()((set, get) => ({
     boxes: restock(),
     firework: initialFirework,
+    spent: [],
     toggle(id) {
       const { boxes } = get();
       const box = boxes[id];
@@ -59,7 +66,7 @@ export function createShopStore(advance = transition) {
       set({ boxes: { ...boxes, [id]: { ...box, phase } } });
     },
     take(id) {
-      const { boxes, firework } = get();
+      const { boxes, firework, spent } = get();
       const box = boxes[id];
       if (box.phase !== 'open' && box.phase !== 'empty') return 'closed';
       if (!box.stock) return 'empty';
@@ -72,12 +79,18 @@ export function createShopStore(advance = transition) {
       }
       if (held.stage !== 'held' || held.id !== id) return 'failed';
       const stock = box.stock - 1;
-      set({ firework: held, boxes: { ...boxes, [id]: { ...box, stock, phase: stock ? 'open' : 'empty' } } });
+      set({ firework: held, spent: archive(spent, firework), boxes: { ...boxes, [id]: { ...box, stock, phase: stock ? 'open' : 'empty' } } });
       return 'taken';
     },
     act(action) {
-      const { firework, boxes } = get();
-      if (action.type === 'reset') set({ firework: initialFirework, boxes: restock(boxes) });
+      const { firework, boxes, spent } = get();
+      if (action.type === 'reset') set({ firework: initialFirework, boxes: restock(boxes), spent: [] });
+      else if (action.type === 'replay' && action.index !== undefined) {
+        const item = spent[action.index];
+        if (!item || (firework.stage !== 'available' && firework.stage !== 'finished')) return;
+        set({ firework: { ...item, stage: 'burning' },
+          spent: archive(spent.filter((_, index) => index !== action.index), firework) });
+      }
       else {
         const next = advance(firework, action);
         if (next !== firework) set({ firework: next });

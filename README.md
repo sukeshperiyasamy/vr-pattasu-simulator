@@ -9,7 +9,7 @@ VR Pattasu Simulator is a first-person **Diwali firecracker simulator** set in a
 ## What you can do
 
 - Explore a nighttime courtyard with stone paving, rangoli, and clay diyas you can light.
-- Open and close labeled firecracker boxes, check remaining stock, and take individual fireworks from the stall.
+- Open and close labeled firecracker boxes and take individual fireworks from the stall.
 - Light your incense stick from a burning diya, then use it on a fuse. Hold the sparkler in hand or place ground and aerial fireworks in the open courtyard.
 - Try the Single-Cap and Roll-Cap toy pistols with unlimited caps. Aim at a placed virtual firecracker to ignite it.
 - Watch sparks, drifting smoke, and bursts that briefly light the courtyard, with positional audio and nighttime ambience.
@@ -57,10 +57,10 @@ Use the on-screen joystick to move and drag to look around. Tap a box or its con
 ### Meta Quest 3 and WebXR
 
 1. Open the [HTTPS demo](https://vr-pattasu-simulator.netlify.app/) directly in **Meta Quest Browser** and select **Enter VR**.
-2. Use the **left trigger** to teleport and the **right thumbstick** to snap turn.
-3. Use the **right trigger** to open boxes, pick up fireworks, and place them. The same trigger fires an equipped toy pistol.
+2. Aim the **left controller** at the ground. The blue beam and ring show where the **left trigger** will teleport you. Use the **right thumbstick** to snap turn.
+3. Use the **right trigger** to open boxes, pick up fireworks, place them, and equip a pistol. The pistol goes in the left hand. Use the **left trigger** to fire, **left grip** to return the pistol, and **left stick click** to teleport while armed.
 4. Bring the right-hand incense tip to a burning diya, then touch the glowing tip to the fuse. The handheld sparkler goes in the left hand.
-5. Press **B** to reset. Use the headset's system controls to leave VR.
+5. Aim at a spent cracker and hold the **right trigger**, then release to replay it. Press **B** to reset. Use the headset's system controls to leave VR.
 
 The Quest controller workflow was checked with WebXR emulation. Physical headset testing is pending, including comfort and performance.
 

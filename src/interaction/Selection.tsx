@@ -13,8 +13,8 @@ import { shop } from '../store/shop';
 import { playShopCue } from '../audio/fountain';
 import { roomTable } from '../scene/layout';
 
-export type Aim = CrackerId | PistolId | ShopAim | 'ground' | 'diya' | null;
-export type InputAction = 'pick' | 'place' | 'ignite' | 'reset' | 'use' | 'shoot';
+export type Aim = CrackerId | PistolId | ShopAim | 'ground' | 'diya' | 'spent' | null;
+export type InputAction = 'pick' | 'place' | 'ignite' | 'reset' | 'use' | 'shoot' | 'holster' | 'replay';
 
 interface Props {
   firework: Firework;
@@ -26,12 +26,13 @@ interface Props {
   xrActive: boolean;
   passthrough: boolean;
   xrPointer: RefObject<Object3D | null>;
+  xrLeftPointer: RefObject<Object3D | null>;
   litDiyas: ReadonlySet<number>;
   taperLit: boolean;
   onLightTaper: () => void;
   onLightDiya: (index: number) => void;
   pistol: PistolId | null;
-  onEquip: (id: PistolId) => void;
+  onEquip: (id: PistolId | null) => void;
   onShoot: (shot: CapShot, target: CrackerId | null) => void;
   onReset: () => void;
 }
@@ -39,7 +40,7 @@ interface Props {
 const center = new Vector2();
 
 export function Selection({
-  firework, onAim, onAction, onFeedback, touchActive, touchAction, xrActive, xrPointer, passthrough,
+  firework, onAim, onAction, onFeedback, touchActive, touchAction, xrActive, xrPointer, xrLeftPointer, passthrough,
   litDiyas, taperLit, onLightTaper, onLightDiya,
   pistol, onEquip, onShoot, onReset,
 }: Props) {
@@ -54,11 +55,11 @@ export function Selection({
     const origin = new Vector3();
     const direction = new Vector3();
     const endpoint = new Vector3();
-    return (range = 4.5, screen = center) => {
+    return (range = 4.5, screen = center, left = false) => {
       hits.length = 0;
       ray.far = range;
       if (xrActive) {
-        const pointer = xrPointer.current;
+        const pointer = (left ? xrLeftPointer : xrPointer).current;
         if (!pointer?.visible) return;
         ray.set(pointer.getWorldPosition(origin), pointer.getWorldDirection(direction).negate());
       } else {
@@ -68,7 +69,7 @@ export function Selection({
       ray.intersectObject(scene, true, hits);
       return { intersection: hits[0], end: ray.ray.at(range, endpoint) };
     };
-  }, [camera, scene, xrActive, xrPointer]);
+  }, [camera, scene, xrActive, xrPointer, xrLeftPointer]);
 
   useFrame((_, delta) => {
     elapsed.current += delta;
@@ -89,8 +90,8 @@ export function Selection({
     const target = aimedAtProp(intersection);
     const toy = firework.stage === 'available' || firework.stage === 'placed' || firework.stage === 'finished'
       ? aimedAtPistol(intersection) : null;
-    const shopTarget = !pistol && !ground ? aimedAtShop(intersection) : null;
-    const aimed = shopTarget ?? toy ?? (diyaIndex(intersection) !== undefined ? 'diya' : ground ? 'ground'
+    const shopTarget = (!pistol || xrActive) && !ground ? aimedAtShop(intersection) : null;
+    const aimed = shopTarget ?? toy ?? (replayTarget(intersection, firework) ? 'spent' : diyaIndex(intersection) !== undefined ? 'diya' : ground ? 'ground'
       : firework.stage === 'available' || (firework.stage === 'placed' && target === firework.id) ? target : null);
     if (aimed !== previous.current) {
       previous.current = aimed;
@@ -106,7 +107,7 @@ export function Selection({
     const canvas = gl.domElement;
     const locked = () => document.pointerLockElement === canvas;
     const pick = (currentHit?: Intersection) => {
-      const target = !pistol ? aimedAtShop(currentHit) : null;
+      const target = !pistol || xrActive ? aimedAtShop(currentHit) : null;
       if (target && currentHit) {
         const id = target.slice(target.indexOf(':') + 1) as CrackerId;
         const inventory = shop.getState();
@@ -118,6 +119,7 @@ export function Selection({
         } else {
           const result = inventory.take(id);
           if (result === 'taken') {
+            if (xrActive && crackers[id].placement === 'handheld') onEquip(null);
             playShopCue('shop-pick', currentHit.point, camera);
             onFeedback(crackers[id].label + ' taken.');
           } else if (result === 'empty') {
@@ -133,11 +135,16 @@ export function Selection({
         onEquip(toy);
       }
     };
+    let mouseDownAt = Infinity;
     function click(event: MouseEvent) {
-      if (event.button === 0 && locked()) perform(pistol ? 'shoot' : 'pick');
+      if (event.button !== 0 || !locked()) return;
+      const held = performance.now() - mouseDownAt >= 650;
+      mouseDownAt = Infinity;
+      perform(pistol ? 'shoot' : held && replayTarget(hit()?.intersection, firework) ? 'replay' : 'pick');
     }
     let tap: { id: number; x: number; y: number } | null = null;
     function startTap(event: PointerEvent) {
+      if (event.pointerType === 'mouse' && event.button === 0 && locked()) mouseDownAt = performance.now();
       if (touchActive && event.pointerType === 'touch') tap = { id: event.pointerId, x: event.clientX, y: event.clientY };
     }
     function endTap(event: PointerEvent) {
@@ -151,9 +158,9 @@ export function Selection({
       if (aimedAtShop(contact)) pick(contact);
     }
     function shoot() {
-      const pose = xrActive ? xrPointer.current : camera;
+      const pose = xrActive ? xrLeftPointer.current : camera;
       if (!pose || !pistol) return;
-      const result = hit(12);
+      const result = hit(12, center, xrActive);
       if (!result) return;
       const contact = result.intersection;
       const offset = xrActive ? vrPistolOffset : pistolOffset;
@@ -166,8 +173,14 @@ export function Selection({
     }
     function perform(action: InputAction) {
       if (action === 'reset') { onReset(); return; }
-      if (pistol && (action === 'shoot' || action === 'ignite' || action === 'use')) { shoot(); return; }
+      if (action === 'holster') { onEquip(null); return; }
+      if (action === 'shoot' || (!xrActive && pistol && (action === 'ignite' || action === 'use'))) { shoot(); return; }
       const currentHit = hit()?.intersection;
+      if (action === 'replay') {
+        const replay = replayTarget(currentHit, firework);
+        if (replay) { onAction(replay); return; }
+        action = 'use';
+      }
       const lamp = diyaIndex(currentHit);
       if ((action === 'ignite' || action === 'use') && lamp !== undefined) {
         if (xrActive) { onFeedback('Touch the stick tip to this diya.'); return; }
@@ -208,7 +221,6 @@ export function Selection({
           else if (firework.stage === 'held') onFeedback('Place the firecracker on the ground first.');
           else if (firework.stage === 'placed') onFeedback('Aim at the placed firecracker from nearby.');
           break;
-        case 'shoot': break;
       }
     }
     function keydown(event: KeyboardEvent) {
@@ -230,7 +242,7 @@ export function Selection({
       canvas.removeEventListener('pointercancel', endTap);
       window.removeEventListener('keydown', keydown);
     };
-  }, [camera, firework, gl, hit, litDiyas, onAction, onEquip, onFeedback, onLightDiya, onLightTaper, onReset, onShoot, passthrough, pistol, taperLit, touchActive, touchAction, xrActive, xrPointer]);
+  }, [camera, firework, gl, hit, litDiyas, onAction, onEquip, onFeedback, onLightDiya, onLightTaper, onReset, onShoot, passthrough, pistol, taperLit, touchActive, touchAction, xrActive, xrLeftPointer]);
 
   return (
     <mesh ref={marker} visible={false} rotation-x={-Math.PI / 2} raycast={() => {}}>
@@ -252,6 +264,15 @@ function aimedAtProp(hit?: Intersection, distance = 2.5): CrackerId | null {
   if (!hit || hit.distance > distance) return null;
   for (let object: Object3D | null = hit.object; object; object = object.parent) {
     if (object.userData.firecracker) return object.userData.firecracker as CrackerId;
+  }
+  return null;
+}
+
+function replayTarget(hit: Intersection | undefined, firework: Firework): Extract<Action, { type: 'replay' }> | null {
+  if (!hit || hit.distance > 4.5 || (firework.stage !== 'finished' && firework.stage !== 'available')) return null;
+  for (let object: Object3D | null = hit.object; object; object = object.parent) {
+    if (typeof object.userData.spentIndex === 'number') return { type: 'replay', index: object.userData.spentIndex };
+    if (firework.stage === 'finished' && object.userData.firecracker === firework.id) return { type: 'replay' };
   }
   return null;
 }

@@ -5,7 +5,7 @@ import type { InputAction } from '../interaction/Selection';
 
 interface Props {
   movement: RefObject<TouchMove>;
-  action: InputAction | null;
+  action: Exclude<InputAction, 'holster'> | null;
   actionLabel?: string;
   onAction: (action: InputAction) => void;
   onPause: () => void;
@@ -48,7 +48,7 @@ export function TouchControls({ movement, action, actionLabel, onAction, onPause
       ><span ref={knob} /></div>
       <div className="touch-actions">
         {action && <button onClick={() => onAction(action)}>
-          {actionLabel ?? { pick: 'Pick up', place: 'Place', ignite: 'Ignite', reset: 'Reset', use: 'Use diya', shoot: 'Fire' }[action]}
+          {actionLabel ?? { pick: 'Pick up', place: 'Place', ignite: 'Ignite', reset: 'Reset', use: 'Use diya', shoot: 'Fire', replay: 'Replay' }[action]}
         </button>}
         {action !== 'reset' && <button onClick={() => onAction('reset')}>Reset</button>}
       </div>

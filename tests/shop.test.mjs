@@ -53,6 +53,27 @@ test('withdrawal enters the existing lifecycle once for each cracker', () => {
   }
 });
 
+test('spent ground crackers remain replayable after another pickup without consuming stock', () => {
+  const store = createShopStore();
+  const { take, toggle, act } = store.getState();
+  for (const id of ['busvanam', 'chain']) {
+    toggle(id);
+    settle(store, id);
+    assert.equal(take(id), 'taken');
+    finish(store, id);
+  }
+  const { boxes } = store.getState();
+  assert.deepEqual(store.getState().spent.map(item => item.id), ['busvanam']);
+  act({ type: 'replay', index: 0 });
+  assert.deepEqual(store.getState().firework, { stage: 'burning', id: 'busvanam', ground: [0, 0, 1] });
+  assert.deepEqual(store.getState().spent.map(item => item.id), ['chain']);
+  assert.equal(store.getState().boxes, boxes);
+  act({ type: 'replay', index: 0 });
+  assert.equal(store.getState().firework.id, 'busvanam');
+  act({ type: 'reset' });
+  assert.deepEqual(store.getState().spent, []);
+});
+
 test('empty boxes refuse further withdrawals and reset restocks and invalidates animation', () => {
   const store = createShopStore();
   const { take, toggle, act, settle: complete } = store.getState();

@@ -10,6 +10,7 @@ export type Firework =
 export type Action =
   | { type: 'pick'; id: CrackerId }
   | { type: 'ignite' | 'finish' | 'reset' }
+  | { type: 'replay'; index?: number }
   | { type: 'place'; ground: Ground };
 
 export const initialFirework: Firework = { stage: 'available' };
@@ -26,5 +27,6 @@ export function transition(state: Firework, action: Action): Firework {
       }
       return state;
     case 'finish': return state.stage === 'burning' ? { ...state, stage: 'finished' } : state;
+    case 'replay': return state.stage === 'finished' ? { ...state, stage: 'burning' } : state;
   }
 }
