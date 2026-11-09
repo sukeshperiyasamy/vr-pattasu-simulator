@@ -97,6 +97,7 @@ export function App() {
   const box = useStore(shop, state => target ? state.boxes[target.id] : null);
   const [pistol, setPistol] = useState<PistolId | null>(null);
   const [shot, setShot] = useState<CapShot | null>(null);
+  const [score, setScore] = useState(0);
   const lastShot = useRef(-Infinity);
   const quality = useSettings(state => state.quality);
   const act = useCallback((action: Exclude<Action, { type: 'pick' }>) => {
@@ -115,6 +116,7 @@ export function App() {
     paper.current?.clear();
     setPistol(null);
     setShot(null);
+    setScore(0);
     lastShot.current = -Infinity;
     act({ type: 'reset' });
   }, [act]);
@@ -122,11 +124,15 @@ export function App() {
     if (next.at - lastShot.current < 280) return;
     lastShot.current = next.at;
     setShot(next);
-    if (firework.stage === 'placed' && firework.id === target) {
+    if (next.targetPoints) {
+      const total = score + next.targetPoints;
+      setScore(total);
+      setFeedback(`+${next.targetPoints} points · Total ${total}`);
+    } else if (firework.stage === 'placed' && firework.id === target) {
       act({ type: 'ignite' });
       setFeedback('Direct hit. Firecracker lit.');
     }
-  }, [act, firework]);
+  }, [act, firework, score]);
   const clearShot = useCallback(() => setShot(null), []);
   useEffect(() => disposeAudio, []);
   useEffect(() => {
@@ -232,7 +238,7 @@ export function App() {
     : aim === 'spent' ? 'Hold right trigger, then release to replay'
     : firework.stage === 'burning' && (firework.id === 'skyshot' || firework.id === 'rocket') ? 'Look up for the burst'
     : pistol ? (passthrough ? 'Left trigger: fire · Left grip: return pistol'
-      : 'Left trigger: fire · Grip: holster · Stick click: teleport')
+      : score ? `Target score ${score} · Left trigger: fire` : 'Left trigger: fire · Grip: holster · Stick click: teleport')
     : !taperLit ? 'Touch your stick tip to a burning diya'
     : firework.stage === 'held' && firework.id === 'sparkler' ? 'Touch the stick to the left-hand sparkler'
     : firework.stage === 'held' ? (passthrough ? 'Aim at clear floor and pull right trigger' : 'Aim to place, or ignite the sparkler')
@@ -281,7 +287,7 @@ export function App() {
         </XR>
       </Canvas>
       {!xrActive && <CourtyardHud
-        {...{ ready, visited, lockError, aim, firework, feedback, touch, touchMove, taperLit, xrSupported, mrSupported, pistol, shopPrompt }}
+        {...{ ready, visited, lockError, aim, firework, feedback, touch, touchMove, taperLit, xrSupported, mrSupported, pistol, score, shopPrompt }}
         locked={locked || touchActive}
         onTouchAction={action => touchAction.current?.(action)}
         onTouchPause={() => setTouchActive(false)}

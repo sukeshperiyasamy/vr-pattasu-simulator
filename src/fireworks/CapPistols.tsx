@@ -18,6 +18,7 @@ export interface CapShot {
   muzzle: Ground;
   end: Ground;
   hit: boolean;
+  targetPoints?: number;
   id: PistolId;
   at: number;
 }

@@ -9,6 +9,7 @@ import { EXRLoader } from 'three/addons/loaders/EXRLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { court, table } from './layout';
 import { Veranda } from './Veranda';
+import { PracticeTargets } from './PracticeTargets';
 
 const assets = import.meta.env.BASE_URL + 'assets/';
 const materialPaths = ['floor', 'wall'].flatMap(surface =>
@@ -211,6 +212,7 @@ export const Courtyard = memo(function Courtyard({ litDiyas }: { litDiyas: Reado
         <boxGeometry />
       </mesh>
       <Veranda plaster={plaster} />
+      <PracticeTargets />
       <Rangoli />
       <DiyaInstances lit={litDiyas} />
       {litDiyas.has(11) && <pointLight position={[3.35, table.height + 0.15, table.z + 0.28]} intensity={1.35} distance={1.8} color="#ff9c55" />}

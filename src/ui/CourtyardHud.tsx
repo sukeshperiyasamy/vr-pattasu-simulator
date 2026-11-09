@@ -26,12 +26,13 @@ interface HudProps {
   onEnterVR: () => void;
   onEnterMR: () => void;
   pistol: PistolId | null;
+  score: number;
   shopPrompt: { title: string; empty: boolean; action: string; animating: boolean } | null;
 }
 
 export function CourtyardHud({
   ready, locked, visited, lockError, aim, firework, feedback, touch, touchMove,
-  onTouchAction, onTouchPause, onEnter, taperLit, xrSupported, mrSupported, onEnterVR, onEnterMR, pistol, shopPrompt,
+  onTouchAction, onTouchPause, onEnter, taperLit, xrSupported, mrSupported, onEnterVR, onEnterMR, pistol, score, shopPrompt,
 }: HudProps) {
   const { quality, muted, reducedFlash, volume, update } = useSettings();
   const stage = firework.stage;
@@ -128,7 +129,8 @@ export function CourtyardHud({
       )}
       <div className="selection-status" role="status">
         {feedback && locked && <div className="selection-card">{feedback}</div>}
-        {pistol && <div className="selection-card"><strong>{pistols[pistol].label}</strong><span>Unlimited caps</span></div>}
+        {pistol && <div className="selection-card"><strong>{pistols[pistol].label}</strong><span>Unlimited caps</span>
+          {score > 0 && <span>Target score {score}</span>}</div>}
         {status && target && (
           <div className="selection-card">
             <span className="eyebrow">{target.type.toUpperCase()}</span>

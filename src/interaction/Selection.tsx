@@ -12,6 +12,7 @@ import type { ShopAim } from '../store/shop';
 import { shop } from '../store/shop';
 import { playShopCue } from '../audio/fountain';
 import { roomTable } from '../scene/layout';
+import { scoreTarget } from '../scene/targetScore';
 
 export type Aim = CrackerId | PistolId | ShopAim | 'ground' | 'diya' | 'spent' | null;
 export type InputAction = 'pick' | 'place' | 'ignite' | 'reset' | 'use' | 'shoot' | 'holster' | 'replay';
@@ -169,6 +170,8 @@ export function Selection({
       onShoot({
         id: pistol, muzzle: muzzle.toArray(), end: (contact?.point ?? result.end).toArray(),
         hit: Boolean(contact), at: performance.now(),
+        targetPoints: contact?.object.userData.practiceTarget && contact.uv
+          ? scoreTarget(contact.uv.x, contact.uv.y) : undefined,
       }, aimedAtProp(contact, 6));
     }
     function perform(action: InputAction) {
